@@ -1,0 +1,410 @@
+/* =========================================================================
+   BITCOIN BATTLEFIELD — HUD estilo terminal
+   ========================================================================= */
+
+:root {
+  --bull: #2bff8c;
+  --bear: #ff4757;
+  --ink: #d7ffe9;
+  --ink-dim: #6f9f85;
+  --bg: #03130a;
+  --panel: rgba(4, 24, 14, 0.62);
+  --border: rgba(43, 255, 140, 0.28);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Viñeta + scanlines para el aire de CRT ---------------------------------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.16) 3px,
+      rgba(0, 0, 0, 0.16) 4px
+    ),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+/* Layout del HUD ---------------------------------------------------------- */
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "tl price tr"
+    ".  .     . "
+    "log pressure help";
+  gap: 14px;
+  padding: 18px clamp(14px, 2.2vw, 32px);
+}
+
+.panel {
+  position: relative;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  align-self: start;
+}
+
+/* Esquinas tipo mira militar */
+.panel::before,
+.panel::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--bull);
+  opacity: 0.9;
+}
+.panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.panel--tl {
+  grid-area: tl;
+  justify-self: start;
+}
+.panel--price {
+  grid-area: price;
+  justify-self: center;
+  text-align: center;
+  min-width: min(420px, 80vw);
+}
+.panel--tr {
+  grid-area: tr;
+  justify-self: end;
+  min-width: 210px;
+}
+.panel--log {
+  grid-area: log;
+  justify-self: start;
+  align-self: end;
+  min-width: min(320px, 42vw);
+}
+.panel--pressure {
+  grid-area: pressure;
+  justify-self: center;
+  align-self: end;
+  width: min(560px, 92vw);
+}
+.panel--help {
+  grid-area: help;
+  justify-self: end;
+  align-self: end;
+  text-align: right;
+}
+
+/* Identidad --------------------------------------------------------------- */
+.brand {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  font-weight: 700;
+  color: var(--bull);
+  text-shadow: 0 0 14px rgba(43, 255, 140, 0.45);
+}
+.brand span {
+  display: block;
+  color: var(--ink);
+  opacity: 0.85;
+}
+.brand-sub {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #caa23a;
+  box-shadow: 0 0 10px currentColor;
+  animation: blink 1.4s infinite;
+}
+.status.is-live .status-dot {
+  background: var(--bull);
+  color: var(--bull);
+}
+.status.is-live #status-text {
+  color: var(--bull);
+}
+.status.is-sim .status-dot {
+  background: #ffb547;
+  color: #ffb547;
+}
+.status.is-sim #status-text {
+  color: #ffb547;
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Precio ------------------------------------------------------------------ */
+.price-label {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--ink-dim);
+}
+.price {
+  font-size: clamp(34px, 5.4vw, 66px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+  color: var(--ink);
+}
+.price.up {
+  color: var(--bull);
+  text-shadow: 0 0 26px rgba(43, 255, 140, 0.55);
+}
+.price.down {
+  color: var(--bear);
+  text-shadow: 0 0 26px rgba(255, 71, 87, 0.55);
+}
+.price-change {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+.price-change.up {
+  color: var(--bull);
+}
+.price-change.down {
+  color: var(--bear);
+}
+
+/* Estadísticas ------------------------------------------------------------ */
+.stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 11px;
+  padding: 2px 0;
+}
+.stat .k {
+  color: var(--ink-dim);
+  letter-spacing: 0.12em;
+}
+.stat .v {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Presión ----------------------------------------------------------------- */
+.pressure-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.pressure-title {
+  color: var(--ink-dim);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+}
+.side--bull {
+  color: var(--bull);
+}
+.side--bear {
+  color: var(--bear);
+}
+.side b {
+  font-variant-numeric: tabular-nums;
+}
+
+.pressure-bar {
+  position: relative;
+  height: 14px;
+  background: linear-gradient(90deg, rgba(255, 71, 87, 0.22), rgba(255, 71, 87, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.pressure-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 50%;
+  background: linear-gradient(90deg, rgba(43, 255, 140, 0.75), rgba(43, 255, 140, 0.4));
+  box-shadow: 0 0 18px rgba(43, 255, 140, 0.5);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pressure-mid {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.pressure-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+}
+.pressure-foot b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.verdict {
+  letter-spacing: 0.2em;
+  font-weight: 700;
+}
+.verdict.bull {
+  color: var(--bull);
+}
+.verdict.bear {
+  color: var(--bear);
+}
+
+/* Log --------------------------------------------------------------------- */
+.log-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+.log li {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+  animation: slide-in 0.22s ease-out;
+}
+.log li.buy {
+  color: var(--bull);
+}
+.log li.sell {
+  color: var(--bear);
+}
+.log li .qty {
+  margin-left: auto;
+  opacity: 0.85;
+}
+.log li.big {
+  font-weight: 700;
+  text-shadow: 0 0 12px currentColor;
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Ayuda ------------------------------------------------------------------- */
+.help-row {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  padding: 1px 0;
+}
+.help-row b {
+  color: var(--ink);
+}
+.help-row--fps {
+  margin-top: 4px;
+  color: var(--bull);
+}
+
+/* Pantallas estrechas ------------------------------------------------------ */
+@media (max-width: 860px) {
+  #hud {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      "price"
+      "tl"
+      "."
+      "pressure";
+    gap: 10px;
+  }
+  .panel--tr,
+  .panel--log,
+  .panel--help {
+    display: none;
+  }
+  .panel--tl,
+  .panel--price,
+  .panel--pressure {
+    justify-self: stretch;
+  }
+}

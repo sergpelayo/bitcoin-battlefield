@@ -1,0 +1,18 @@
+{
+  "name": "bitcoin-battlefield",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "El order book de Bitcoin en vivo como un campo de batalla 3D: toros vs osos.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "vite": "^8.2.1"
+  }
+}
