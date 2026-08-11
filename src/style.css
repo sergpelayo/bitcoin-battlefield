@@ -66,7 +66,7 @@ body {
   grid-template-areas:
     "tl price tr"
     ".  .     . "
-    "log pressure help";
+    "pressure . log";
   gap: 14px;
   padding: 18px clamp(14px, 2.2vw, 32px);
 }
@@ -121,21 +121,15 @@ body {
 }
 .panel--log {
   grid-area: log;
-  justify-self: start;
+  justify-self: end;
   align-self: end;
-  min-width: min(320px, 42vw);
+  min-width: min(340px, 44vw);
 }
 .panel--pressure {
   grid-area: pressure;
-  justify-self: center;
+  justify-self: start;
   align-self: end;
-  width: min(560px, 92vw);
-}
-.panel--help {
-  grid-area: help;
-  justify-self: end;
-  align-self: end;
-  text-align: right;
+  width: min(400px, 92vw);
 }
 
 /* Identidad --------------------------------------------------------------- */
@@ -207,6 +201,26 @@ body {
   letter-spacing: 0.3em;
   color: var(--ink-dim);
 }
+.price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+}
+.tick {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  min-width: 78px;
+  text-align: left;
+}
+.tick.up {
+  color: var(--bull);
+}
+.tick.down {
+  color: var(--bear);
+}
+
 .price {
   font-size: clamp(34px, 5.4vw, 66px);
   font-weight: 700;
@@ -301,10 +315,50 @@ body {
   background: rgba(255, 255, 255, 0.5);
 }
 
+.pressure-head--sides {
+  margin: 8px 0 0;
+}
+
+.walls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wall {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 5px 8px;
+}
+.wall .k {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+.wall .v {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.wall--buy .v {
+  color: var(--bull);
+}
+.wall--sell .v {
+  color: var(--bear);
+}
+.wall--buy {
+  border-color: rgba(43, 255, 140, 0.3);
+}
+.wall--sell {
+  border-color: rgba(255, 71, 87, 0.3);
+}
+
 .pressure-foot {
   display: flex;
   justify-content: space-between;
-  margin-top: 7px;
+  margin-top: 8px;
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--ink-dim);
@@ -371,17 +425,22 @@ body {
 }
 
 /* Ayuda ------------------------------------------------------------------- */
-.help-row {
-  font-size: 10px;
+.help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(43, 255, 140, 0.16);
+  font-size: 9px;
   letter-spacing: 0.1em;
   color: var(--ink-dim);
-  padding: 1px 0;
 }
-.help-row b {
+.help b {
   color: var(--ink);
 }
-.help-row--fps {
-  margin-top: 4px;
+.help-fps {
+  margin-left: auto;
   color: var(--bull);
 }
 
@@ -398,8 +457,7 @@ body {
     gap: 10px;
   }
   .panel--tr,
-  .panel--log,
-  .panel--help {
+  .panel--log {
     display: none;
   }
   .panel--tl,

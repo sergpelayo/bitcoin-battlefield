@@ -28,8 +28,11 @@
 
       <!-- ============ Superior centro: precio ============ -->
       <section class="panel panel--price">
-        <div class="price-label">PRECIO SPOT</div>
-        <div class="price" id="price">—</div>
+        <div class="price-label">BTC / USDT &middot; SPOT</div>
+        <div class="price-row">
+          <div class="price" id="price">—</div>
+          <div class="tick" id="tick"></div>
+        </div>
         <div class="price-change" id="change">—</div>
       </section>
 
@@ -42,37 +45,46 @@
         <div class="stat"><span class="k">RANGO</span><span class="v" id="range">—</span></div>
       </section>
 
-      <!-- ============ Inferior centro: presión de mercado ============ -->
+      <!-- ============ Inferior izquierda: presión + paredes ============ -->
       <section class="panel panel--pressure">
         <div class="pressure-head">
-          <span class="side side--bull">▲ TOROS <b id="bull-pct">50.0%</b></span>
-          <span class="pressure-title">PRESIÓN DEL MERCADO</span>
-          <span class="side side--bear"><b id="bear-pct">50.0%</b> OSOS ▼</span>
+          <span class="pressure-title">MARKET PRESSURE</span>
+          <span id="verdict" class="verdict">CONTESTED</span>
         </div>
         <div class="pressure-bar">
           <div class="pressure-fill" id="pressure-fill"></div>
           <div class="pressure-mid"></div>
         </div>
+        <div class="pressure-head pressure-head--sides">
+          <span class="side side--bull">▲ BULLS <b id="bull-pct">50.0%</b></span>
+          <span class="side side--bear"><b id="bear-pct">50.0%</b> BEARS ▼</span>
+        </div>
+        <div class="walls">
+          <div class="wall wall--buy">
+            <span class="k">BUY WALL</span>
+            <span class="v" id="buy-wall">—</span>
+          </div>
+          <div class="wall wall--sell">
+            <span class="k">SELL WALL</span>
+            <span class="v" id="sell-wall">—</span>
+          </div>
+        </div>
         <div class="pressure-foot">
           <span>BID <b id="bid-vol">—</b></span>
-          <span id="verdict" class="verdict">EQUILIBRIO</span>
           <span>ASK <b id="ask-vol">—</b></span>
         </div>
       </section>
 
-      <!-- ============ Inferior izquierda: log de combate ============ -->
+      <!-- ============ Inferior derecha: market feed ============ -->
       <section class="panel panel--log">
-        <div class="log-title">// FLUJO DE ÓRDENES</div>
+        <div class="log-title">// MARKET FEED</div>
         <ul class="log" id="log"></ul>
-      </section>
-
-      <!-- ============ Inferior derecha: controles ============ -->
-      <section class="panel panel--help">
-        <div class="help-row"><b>ARRASTRAR</b> orbitar</div>
-        <div class="help-row"><b>RUEDA</b> zoom</div>
-        <div class="help-row"><b>R</b> reencuadrar</div>
-        <div class="help-row"><b>B</b> bloom <span id="bloom-state">ON</span></div>
-        <div class="help-row help-row--fps"><b id="fps">--</b> FPS</div>
+        <div class="help">
+          <span><b>ARRASTRAR</b> orbitar</span>
+          <span><b>R</b> reencuadrar</span>
+          <span><b>B</b> bloom <span id="bloom-state">ON</span></span>
+          <span class="help-fps"><b id="fps">--</b> FPS</span>
+        </div>
       </section>
     </main>
 

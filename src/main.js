@@ -1,6 +1,7 @@
 import { MarketFeed } from './feed/index.js';
 import { niceBinSize } from './lib/orderbook.js';
-import { Battlefield, LEVELS } from './scene/battlefield.js';
+import { Battlefield } from './scene/battlefield.js';
+import { BINS } from './scene/field.js';
 import { Hud } from './hud.js';
 
 const canvas = document.getElementById('scene');
@@ -35,15 +36,27 @@ function consumeBook() {
   if (!best) return;
 
   const binSize = niceBinSize(best.mid);
-  const depth = book.bucketize(best.mid, binSize, LEVELS);
+  const depth = book.bucketize(best.mid, binSize, BINS);
 
   battlefield.setDepth(depth);
+  battlefield.setMarket(best.mid, binSize);
+
+  // Pared = el tramo más cargado de cada lado, valorado en dólares.
+  let maxBid = 0;
+  let maxAsk = 0;
+  for (let i = 0; i < BINS; i++) {
+    if (depth.bidBins[i] > maxBid) maxBid = depth.bidBins[i];
+    if (depth.askBins[i] > maxAsk) maxAsk = depth.askBins[i];
+  }
+
   hud.setDepth({
     bidVol: depth.bidVol,
     askVol: depth.askVol,
     spread: best.spread,
     binSize,
-    levels: LEVELS,
+    levels: BINS,
+    buyWall: maxBid * best.mid,
+    sellWall: maxAsk * best.mid,
   });
 }
 
