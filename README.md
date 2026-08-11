@@ -4,6 +4,11 @@ El order book de Bitcoin en vivo convertido en un campo de batalla 3D: los **tor
 pelean contra los **osos** (asks) sobre un terreno cuya altura *es* la profundidad real del
 libro de órdenes de Binance.
 
+![Bitcoin Battlefield](docs/preview.png)
+
+_La escena 3D con datos reales de Binance. El HUD va en DOM sobre el canvas, así que no
+sale en esta captura._
+
 ---
 
 ## Qué estás viendo
