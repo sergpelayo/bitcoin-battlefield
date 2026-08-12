@@ -57,6 +57,8 @@ export const VIGILANCIAS = [
 const ESPERA_MS = { wall: 120_000, whale: 45_000, move: 180_000, round: 60_000 };
 const VENTANA_MOV_MS = 180_000;
 
+import { baseDe, fmtPrecio } from './symbols.js';
+
 const $ = (id) => document.getElementById(id);
 const usd0 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
 const dosDig = (n) => String(n).padStart(2, '0');
@@ -64,11 +66,14 @@ const dosDig = (n) => String(n).padStart(2, '0');
 const fmtUsd = (v) => `$${usd0.format(Math.round(v))}`;
 
 export class Alarms {
-  constructor(audio) {
+  constructor(audio, license) {
     this.audio = audio;
+    this.license = license;
+    this.symbol = 'BTCUSDT';
     this.lista = [];
     this.vigilancia = {};
-    this.precio = null;
+    /** Último precio visto de CADA moneda, no sólo de la activa. */
+    this.precios = new Map();
     this._ultimoAviso = {};
     this._historia = []; // [{t, precio}] para el movimiento brusco
     this._ultimoMillar = null;
@@ -146,17 +151,31 @@ export class Alarms {
       e.preventDefault();
       const precio = parseFloat($('in-price').value);
       if (!Number.isFinite(precio) || precio <= 0) return;
+
+      const yaTiene = this.lista.filter(
+        (a) => a.kind === 'price' && a.symbol === this.symbol,
+      ).length;
+      if (!this.license.cabeOtraAlarma(yaTiene)) {
+        this.el.pistaPrecio.textContent =
+          `El plan ${this.license.plan.nombre} permite ${this.license.plan.alarmasPorMoneda} ` +
+          `alarma por moneda. Borra la de ${this.symbol} o amplía el plan.`;
+        this.el.pistaPrecio.classList.add('warn');
+        return;
+      }
+
       // La dirección se fija al crearla: si ahora estamos por debajo, la alarma
       // es "cuando suba hasta aquí". Sin esto, crear una alarma en el precio
       // actual saltaría al instante con cualquier oscilación.
-      const desde = this.precio ?? precio;
+      const desde = this.precios.get(this.symbol) ?? precio;
       this._alta({
         id: crypto.randomUUID(),
         kind: 'price',
+        symbol: this.symbol,
         valor: precio,
         arriba: precio > desde,
         etiqueta: $('in-price-label').value.trim(),
       });
+      this.el.pistaPrecio.classList.remove('warn');
       $('in-price').value = '';
       $('in-price-label').value = '';
     });
@@ -215,11 +234,14 @@ export class Alarms {
       const txt = document.createElement('span');
       txt.className = 'alarm-k';
       txt.textContent =
-        a.kind === 'time' ? this._horaDe(a.cuando) : `${a.arriba ? '▲' : '▼'} ${fmtUsd(a.valor)}`;
+        a.kind === 'time'
+          ? this._horaDe(a.cuando)
+          : `${baseDe(a.symbol || '')} ${a.arriba ? '▲' : '▼'} ${fmtPrecio(a.valor)}`;
 
       const et = document.createElement('span');
       et.className = 'alarm-v';
-      et.textContent = a.etiqueta || (a.kind === 'time' ? 'despertador' : 'nivel de precio');
+      et.textContent =
+        a.etiqueta || (a.kind === 'time' ? 'despertador' : `nivel de ${baseDe(a.symbol || '')}`);
 
       const x = document.createElement('button');
       x.type = 'button';
@@ -294,36 +316,78 @@ export class Alarms {
   }
 
   // ------------------------------------------------------------------- precio ----
-  onPrice(precio) {
+  /** Cambia la moneda a la que apuntan las alarmas nuevas y las vigilancias. */
+  setSymbol(symbol) {
+    this.symbol = symbol;
+    // El histórico de movimiento es de la moneda anterior: mezclarlo daría un
+    // salto porcentual falso y dispararía la alarma de movimiento brusco.
+    this._historia = [];
+    this._ultimoMillar = null;
+    const p = this.precios.get(symbol);
+    this.el.pistaPrecio.classList.remove('warn');
+    this.el.pistaPrecio.textContent = p
+      ? `Suena al cruzar ese precio. ${baseDe(symbol)} ahora: ${fmtPrecio(p)}.`
+      : `Alarma sobre ${baseDe(symbol)}.`;
+    this._pintarLista();
+  }
+
+  /**
+   * Precio nuevo de UNA moneda cualquiera, no necesariamente la que se está
+   * mirando: el watchlist alimenta aquí las demás con su ticker de 1 Hz. Así
+   * una alarma de ETH suena aunque tengas el campo puesto en BTC.
+   */
+  onPrice(symbol, precio) {
     if (!Number.isFinite(precio)) return;
-    const anterior = this.precio;
-    this.precio = precio;
-    this.el.pistaPrecio.textContent = `Suena al cruzar ese precio. Ahora: ${fmtUsd(precio)}.`;
+    const anterior = this.precios.get(symbol);
+    this.precios.set(symbol, precio);
+
+    const esActiva = symbol === this.symbol;
+    if (esActiva) {
+      this.el.pistaPrecio.textContent = `Suena al cruzar ese precio. ${baseDe(symbol)} ahora: ${fmtPrecio(precio)}.`;
+    }
     if (anterior == null) {
-      this._ultimoMillar = Math.floor(precio / 1000);
+      if (esActiva) this._ultimoMillar = Math.floor(precio / 1000);
       return;
     }
 
-    // --- alarmas de precio del usuario ---
-    for (const a of this.lista.filter((x) => x.kind === 'price')) {
-      const cruzado = a.arriba ? anterior < a.valor && precio >= a.valor : anterior > a.valor && precio <= a.valor;
+    // --- alarmas de precio del usuario, sólo las de esta moneda ---
+    for (const a of this.lista.filter((x) => x.kind === 'price' && x.symbol === symbol)) {
+      const cruzado = a.arriba
+        ? anterior < a.valor && precio >= a.valor
+        : anterior > a.valor && precio <= a.valor;
       if (!cruzado) continue;
-      this._sonar('PRECIO', `${a.etiqueta ? `${a.etiqueta} — ` : ''}BTC ${fmtUsd(precio)}`);
+      this._sonar(
+        `PRECIO ${baseDe(symbol)}`,
+        `${a.etiqueta ? `${a.etiqueta} — ` : ''}${baseDe(symbol)} ${fmtPrecio(precio)}`,
+      );
       this._borrar(a.id);
     }
 
-    // --- cruce de millar ---
-    const millar = Math.floor(precio / 1000);
-    if (this._ultimoMillar != null && millar !== this._ultimoMillar) {
-      const subiendo = millar > this._ultimoMillar;
-      this._vigilar('round', 'CRUCE DE MILLAR', `BTC ${subiendo ? 'supera' : 'pierde'} ${fmtUsd(millar * 1000 + (subiendo ? 0 : 1000))}`);
+    // Las vigilancias van sobre el par que se está mirando: son ruido para el resto.
+    if (!esActiva) return;
+
+    // --- cruce de millar (sólo tiene sentido en monedas de precio alto) ---
+    if (precio >= 100) {
+      const millar = Math.floor(precio / 1000);
+      if (this._ultimoMillar != null && millar !== this._ultimoMillar) {
+        const subiendo = millar > this._ultimoMillar;
+        this._vigilar(
+          'round',
+          'CRUCE DE MILLAR',
+          `${baseDe(symbol)} ${subiendo ? 'supera' : 'pierde'} ${fmtUsd(
+            (subiendo ? millar : millar + 1) * 1000,
+          )}`,
+        );
+      }
       this._ultimoMillar = millar;
     }
 
     // --- movimiento brusco ---
     const ahora = Date.now();
     this._historia.push({ t: ahora, precio });
-    while (this._historia.length && ahora - this._historia[0].t > VENTANA_MOV_MS) this._historia.shift();
+    while (this._historia.length && ahora - this._historia[0].t > VENTANA_MOV_MS) {
+      this._historia.shift();
+    }
     const viejo = this._historia[0];
     if (viejo && ahora - viejo.t > VENTANA_MOV_MS * 0.8) {
       const pct = ((precio - viejo.precio) / viejo.precio) * 100;
@@ -332,7 +396,7 @@ export class Alarms {
         this._vigilar(
           'move',
           'MOVIMIENTO BRUSCO',
-          `${pct > 0 ? '▲' : '▼'} ${pct.toFixed(2)}% en 3 min · ${fmtUsd(precio)}`,
+          `${baseDe(symbol)} ${pct > 0 ? '▲' : '▼'} ${pct.toFixed(2)}% en 3 min`,
         );
       }
     }
@@ -342,7 +406,11 @@ export class Alarms {
     const usd = price * qty;
     const umbral = VIGILANCIAS.find((v) => v.id === 'whale').umbral;
     if (usd >= umbral) {
-      this._vigilar('whale', 'TRADE BALLENA', `${qty.toFixed(3)} BTC · ${fmtUsd(usd)}`);
+      this._vigilar(
+        'whale',
+        'TRADE BALLENA',
+        `${qty.toFixed(3)} ${baseDe(this.symbol)} · ${fmtUsd(usd)}`,
+      );
     }
   }
 

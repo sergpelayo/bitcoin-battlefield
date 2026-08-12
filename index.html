@@ -19,7 +19,7 @@
       <!-- ============ Superior izquierda: identidad + estado ============ -->
       <section class="panel panel--tl">
         <h1 class="brand">BITCOIN<span>BATTLEFIELD</span></h1>
-        <div class="brand-sub">BTC / USDT &middot; ORDER BOOK WARFARE</div>
+        <div class="brand-sub"><span id="brand-pair">BTC / USDT</span> &middot; ORDER BOOK WARFARE</div>
         <div class="status" id="status">
           <span class="status-dot" id="status-dot"></span>
           <span id="status-text">conectando…</span>
@@ -34,7 +34,7 @@
 
       <!-- ============ Superior centro: precio ============ -->
       <section class="panel panel--price">
-        <div class="price-label">BTC / USDT &middot; SPOT</div>
+        <div class="price-label"><span id="price-pair">BTC / USDT</span> &middot; SPOT</div>
         <div class="price-row">
           <div class="price" id="price">—</div>
           <div class="tick" id="tick"></div>
@@ -49,6 +49,18 @@
         <div class="stat"><span class="k">VOL 24H</span><span class="v" id="vol">—</span></div>
         <div class="stat"><span class="k">SPREAD</span><span class="v" id="spread">—</span></div>
         <div class="stat"><span class="k">RANGO</span><span class="v" id="range">—</span></div>
+      </section>
+
+      <!-- ============ Lateral izquierda: watchlist ============ -->
+      <section class="panel panel--watch">
+        <div class="watch-head">
+          <span class="watch-title">// MERCADOS</span>
+          <button type="button" class="btn btn--plan" id="open-plan">PLAN</button>
+        </div>
+        <ul class="watch" id="watch-list"></ul>
+        <input class="in in--search" id="in-symbol" type="search" placeholder="buscar…" />
+        <ul class="sym-results" id="symbol-results"></ul>
+        <div class="hint" id="watch-hint"></div>
       </section>
 
       <!-- ============ Inferior izquierda: presión + paredes ============ -->
@@ -138,6 +150,32 @@
 
         <h3 class="dr-h">PROGRAMADAS <span class="dim" id="alarm-count"></span></h3>
         <ul class="alarm-list" id="alarm-list"></ul>
+      </div>
+
+      <div class="drawer-body" id="tab-plan" hidden>
+        <div class="plan-card" id="plan-card">
+          <div class="plan-now">PLAN ACTUAL</div>
+          <div class="plan-name" id="plan-name">RECLUTA</div>
+          <ul class="plan-feats" id="plan-feats"></ul>
+        </div>
+
+        <h3 class="dr-h">COMANDANTE · <span id="plan-precio">9,99 USD</span></h3>
+        <ul class="plan-feats plan-feats--pro">
+          <li>Monedas ilimitadas en el watchlist</li>
+          <li>Alarmas ilimitadas por moneda</li>
+          <li>Buscador sobre los 600+ pares de Binance</li>
+        </ul>
+        <div class="row">
+          <input class="in" id="in-key" type="text" placeholder="BB-XXXX-XXXX-XXXX" />
+          <button class="btn" type="button" id="btn-key">ACTIVAR</button>
+        </div>
+        <p class="hint" id="key-hint"></p>
+        <button class="btn btn--wide" type="button" id="btn-desactivar" hidden>VOLVER A RECLUTA</button>
+
+        <p class="hint hint--legal">
+          El cobro todavía no está conectado: hace falta una pasarela de pago y un
+          validador fuera del navegador. Está explicado en <code>DESPLIEGUE-PRO.md</code>.
+        </p>
       </div>
 
       <div class="drawer-body" id="tab-audio" hidden>

@@ -37,6 +37,9 @@ jobs:
       # npm ci exige que package-lock.json esté al día; si falla, es que el lock
       # y package.json han divergido.
       - run: npm ci
+      # La prueba de humo cubre los límites de los planes: si un cambio los
+      # rompe, mejor que falle aquí que en producción.
+      - run: npm test
       - run: npm run build
 
       - uses: actions/configure-pages@v5

@@ -136,6 +136,12 @@ export class Battlefield {
     this.armies.fireTrade(trade);
   }
 
+  /** Vacía el campo al cambiar de moneda. */
+  reset() {
+    this.armies.reset();
+    this.pressureTarget = 0;
+  }
+
   /** Avisa de cada blindado que desaparece del campo (para el sonido). */
   onUnitDestroyed(fn) {
     this.armies.onDestroy = fn;

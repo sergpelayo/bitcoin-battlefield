@@ -21,10 +21,15 @@ export class MarketFeed extends Emitter {
     this.source = 'connecting'; // 'live' | 'sim' | 'connecting'
     this.lastPrice = null;
 
-    this.live = new LiveFeed(symbol);
     this.sim = null;
     this._retryTimer = null;
+    this._crearLive();
+  }
 
+  /** El feed en vivo se recrea entero al cambiar de moneda: es más simple y más
+   *  seguro que reutilizar uno con el libro y la secuencia de otro símbolo. */
+  _crearLive() {
+    this.live = new LiveFeed(this.symbol);
     this.live.on('book', (book) => {
       if (this.source !== 'live') this._promoteLive();
       this.emit('book', book);
@@ -40,6 +45,21 @@ export class MarketFeed extends Emitter {
       this.emit('ticker', t);
     });
     this.live.on('down', ({ reason }) => this._fallback(reason));
+  }
+
+  /**
+   * Cambia el par que se está mirando. Reinicia todo: libro, precio de
+   * referencia y simulador. Sin ese borrón, el precio de la moneda anterior se
+   * colaría en el arranque de la nueva y el campo daría un salto absurdo.
+   */
+  setSymbol(symbol) {
+    const nuevo = symbol.toUpperCase();
+    if (nuevo === this.symbol) return;
+    this.stop();
+    this.symbol = nuevo;
+    this.lastPrice = null;
+    this._crearLive();
+    this.start();
   }
 
   start() {

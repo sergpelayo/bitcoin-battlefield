@@ -6,13 +6,17 @@ import { Hud } from './hud.js';
 import { Audio } from './audio.js';
 import { Alarms } from './alarms.js';
 import { Controls } from './controls.js';
+import { License } from './license.js';
+import { Watchlist } from './watchlist.js';
 
 const canvas = document.getElementById('scene');
 const battlefield = new Battlefield(canvas);
 const hud = new Hud();
 const audio = new Audio();
-const alarms = new Alarms(audio);
-const controls = new Controls(audio);
+const license = new License();
+const watchlist = new Watchlist(license);
+const alarms = new Alarms(audio, license);
+const controls = new Controls(audio, license, watchlist);
 
 // El navegador no deja crear audio hasta que el usuario toca la página: el
 // primer gesto lo desbloquea y a partir de ahí suenan explosiones y sirenas.
@@ -25,7 +29,26 @@ for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
 battlefield.onUnitDestroyed(({ kind }) => audio.explosion(kind));
 
 // ---------------------------------------------------------------- datos ----
-const feed = new MarketFeed('BTCUSDT');
+const feed = new MarketFeed(watchlist.activo);
+alarms.setSymbol(watchlist.activo);
+hud.setSymbol(watchlist.activo);
+
+// Elegir moneda en el watchlist mueve el campo de batalla entero.
+watchlist.onSelect = (symbol) => {
+  feed.setSymbol(symbol);
+  alarms.setSymbol(symbol);
+  hud.setSymbol(symbol);
+  // El libro anterior ya no vale: sin este borrón las tropas de la moneda vieja
+  // se quedarían plantadas hasta que llegara el primer snapshot de la nueva.
+  pendingBook = null;
+  battlefield.reset();
+};
+
+// Las cotizaciones del watchlist alimentan las alarmas de las monedas que no
+// se están mirando: una alarma de ETH suena aunque tengas el campo en BTC.
+watchlist.onPrecio = (symbol, precio) => {
+  if (symbol !== feed.symbol) alarms.onPrice(symbol, precio);
+};
 
 feed.on('status', ({ source, detail }) => hud.setStatus(source, detail));
 feed.on('ticker', (t) => hud.setTicker(t));
@@ -34,7 +57,7 @@ feed.on('trade', (t) => {
   battlefield.fireTrade(t);
   // El ticker de 24h llega una vez por segundo; los trades dan el precio al instante.
   hud.setPrice(t.price);
-  alarms.onPrice(t.price);
+  alarms.onPrice(feed.symbol, t.price);
   alarms.onTrade(t);
   if (t.qty >= 0.02) hud.pushTrade(t);
 });

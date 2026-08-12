@@ -20,15 +20,78 @@ Un valle en plena Segunda Guerra Mundial, visto desde una cámara oblicua baja.
 | **Vía de tren serpenteante** | El precio medio. Es la frontera: divide el valle en dos y todo lo demás se organiza a su alrededor. |
 | **Ladera verde y frondosa (izquierda)** | Territorio de los toros: los bids, precios por debajo del mid. |
 | **Tierra ocre y seca (derecha)** | Territorio de los osos: los asks, precios por encima. |
-| **Soldados y tanques azules / rojos** | Cada tramo de precio es una franja del terreno; el volumen de ese tramo decide cuántas unidades hay plantadas ahí. Una pared de liquidez se ve como una concentración de tropas. |
-| **Aviones** | Sobrevuelan la línea del frente, uno por bando. Ambientación, no dato. |
+| **Soldados, tanques y tanques gigantes** | Dinero. Cada figura vale una cantidad fija, así que contar tropas es leer cuántos dólares defienden ese precio. Ver la tabla de abajo. |
+| **Aviones** | La reserva: uno por cada $5M de liquidez que existe **fuera** de la ventana visible. Suele pesar más que lo que se ve en el suelo. |
 | **Trazadoras y explosiones** | Trades ejecutados. Dispara el bando agresor: azul si la compra barrió el ask, rojo si la venta barrió el bid. El calibre va con el tamaño de la orden. |
 | **Desplazamiento del frente** | La presión de mercado mueve la vía, la frontera de color y el avance de las tropas: el bando dominante gana terreno literalmente. |
 | **Regla en el suelo** | Niveles de precio absolutos marcados como ticks en la tierra, en el borde inferior. |
 
-El campo cubre una ventana de **±0,25 %** alrededor del precio medio, agrupada en 24 tramos
+El campo cubre una ventana de ~**±0,6 %** alrededor del precio medio, agrupada en 24 tramos
 por bando. Sin esa agrupación no se vería nada: el top del libro de BTCUSDT abarca solo unos
 centavos.
+
+## Qué vale cada figura
+
+| Figura | Vale |
+| --- | --- |
+| Soldado | $10.000 |
+| Tanque | $100.000 |
+| Tanque gigante (Maus) | $1.000.000 |
+| Avión | $5.000.000 de reserva fuera del campo |
+
+La escala es 1 : 10 : 100 para que el campo se lea como billetes: 3 tanques y 4 soldados
+son $340.000 sin pensarlo. Y no es una elección estética — con BTCUSDT un tramo mediano
+carga ~$450.000, así que a $1.000 el soldado harían falta 450 figuras por tramo (unas
+24.000 en pantalla) y el valle sería una alfombra ilegible. A $10.000, el campo entero
+ronda las 400 unidades.
+
+Como los valores son **absolutos y no relativos**, el campo se vacía de verdad cuando el
+libro adelgaza, y monedas distintas se comparan entre sí: el libro de BTC despliega unas
+350 unidades donde el de DOGE despliega 113.
+
+## Reloj y alarmas
+
+La app también funciona como despertador. Todo vive en el navegador y en `localStorage`,
+así que **las alarmas sólo suenan con la pestaña abierta** — sin servidor no hay vigilancia
+24/7.
+
+- **De hora** — como un despertador normal; si la hora ya pasó, suena mañana.
+- **De precio** — por moneda, y saltan aunque estés mirando otro par: el watchlist
+  alimenta las cotizaciones del resto.
+- **De mercado** — cuatro vigilancias con casilla: muro de liquidez ≥ $2M, trade ballena
+  ≥ $250.000, movimiento ≥ 0,4 % en 3 min y cruce de millar. Los umbrales salen de medir
+  el libro real, no de redondear a ojo.
+
+Avisan con sirena antiaérea sintetizada, notificación del sistema y un cartel en pantalla.
+
+## Sonido
+
+Las explosiones y la sirena se **sintetizan con WebAudio** (`src/audio.js`): no hay
+ficheros que descargar y cada estallido suena distinto. Un tanque suena seco; un gigante
+retumba casi el triple. Se activan y desactivan desde el panel ♪ AUDIO.
+
+Para música de fondo propia, deja el fichero en `public/audio/` y carga su ruta desde ese
+mismo panel. YouTube Music **no se puede incrustar** (responde con
+`x-frame-options: SAMEORIGIN`), así que la música de YouTube suena por el reproductor
+normal — pegar un enlace de YouTube Music funciona igual, porque se extrae el ID de la
+lista.
+
+## Monedas y planes
+
+El watchlist lleva varias monedas con precio en vivo y, al elegir una, el campo de batalla
+entero se muda a ese par. El catálogo son 646 pares contra USDT que se sacan de
+`/api/v3/ticker/price` (153 KB con precios incluidos; el endpoint "correcto" para listar
+mercados pesa 17 MB).
+
+| | RECLUTA (gratis) | COMANDANTE (9,99 USD) |
+| --- | --- | --- |
+| Monedas en el watchlist | 2 | ilimitadas |
+| Alarmas de precio por moneda | 1 | ilimitadas |
+| Buscador de pares | — | sobre los 646 |
+
+> ⚠️ El cobro **todavía no está conectado**, y el reparto de funciones ocurre en el
+> navegador, así que no protege ingresos: cualquiera puede saltárselo desde la consola.
+> Qué haría falta para cobrar de verdad está en [DESPLIEGUE-PRO.md](DESPLIEGUE-PRO.md).
 
 ## Datos
 
@@ -81,6 +144,16 @@ Por eso `data-stream.binance.vision` va primero en `ENDPOINTS`: sirve los mismos
 que `binance.com` pero sin geobloqueo por IP, y con el sitio abierto a cualquiera importa
 que la primera conexión funcione desde cualquier país.
 
+## Pruebas
+
+```bash
+npm test
+```
+
+Prueba de humo sobre un DOM real (jsdom): construcción de todos los módulos del HUD,
+límites de los planes, disparo de alarmas y cambio de moneda. No cubre la escena 3D, que
+necesita WebGL.
+
 ## Controles
 
 | Tecla / gesto | Acción |
@@ -101,6 +174,12 @@ src/
   lib/
     emitter.js           Mini event emitter
     orderbook.js         Libro local + agrupación en tramos de precio
+  audio.js               Explosiones y sirena sintetizadas + música de fondo
+  alarms.js              Reloj, alarmas de hora/precio y vigilancias de mercado
+  watchlist.js           Monedas seguidas, cotizaciones y cambio de par
+  symbols.js             Catálogo de pares USDT, buscador y formato de precios
+  license.js             Planes RECLUTA / COMANDANTE
+  controls.js            Cajón de alarmas, audio y plan
   feed/
     index.js             Orquestador live ⇄ simulado con reintentos
     live.js              WebSocket + snapshot REST de Binance

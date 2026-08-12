@@ -48,9 +48,25 @@ export class Hud {
       log: $('log'),
       fps: $('fps'),
       bloomState: $('bloom-state'),
+      brandPair: $('brand-pair'),
+      pricePair: $('price-pair'),
     };
     this.lastPrice = null;
     this._flashTimer = null;
+  }
+
+  /** Cambia los rótulos al par que se está mirando. */
+  setSymbol(symbol) {
+    const par = `${symbol.replace(/USDT$/, '')} / USDT`;
+    this.el.brandPair.textContent = par;
+    this.el.pricePair.textContent = par;
+    document.title = `BITCOIN BATTLEFIELD // ${symbol}`;
+    // El precio anterior es de otra moneda: compararlos daría una flecha y un
+    // delta sin sentido en el primer tick del par nuevo.
+    this.lastPrice = null;
+    this.el.price.textContent = '—';
+    this.el.tick.textContent = '';
+    this.el.log.textContent = '';
   }
 
   setStatus(source, detail) {

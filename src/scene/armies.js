@@ -299,6 +299,21 @@ export class Armies {
     }
   }
 
+  /**
+   * Retira todas las tropas. Se llama al cambiar de moneda: los contadores se
+   * ponen a cero y el render de la siguiente pasada esconde cada instancia,
+   * porque `prev` todavía recuerda cuántas había y sabe cuáles ocultar.
+   */
+  reset() {
+    for (const side of [-1, 1]) {
+      this.counts[side].soldiers.fill(0);
+      this.counts[side].tanks.fill(0);
+      this.counts[side].giants.fill(0);
+    }
+    this.planeCount[-1] = 1;
+    this.planeCount[1] = 1;
+  }
+
   /** Un trade ejecutado: el bando agresor dispara contra la línea contraria. */
   fireTrade({ isBuy, qty }) {
     const side = isBuy ? -1 : 1;

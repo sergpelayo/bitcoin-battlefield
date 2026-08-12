@@ -65,7 +65,7 @@ body {
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
     "tl price tr"
-    ".  .     . "
+    "watch .   . "
     "pressure clock log";
   gap: 14px;
   padding: 18px clamp(14px, 2.2vw, 32px);
@@ -448,22 +448,30 @@ body {
 @media (max-width: 860px) {
   #hud {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
     grid-template-areas:
       "price"
+      "watch"
       "tl"
       "."
-      "pressure";
+      "clock";
     gap: 10px;
   }
+  /* En vertical no cabe todo: se quedan lo que se mira (precio, mercados,
+     reloj) y desaparecen los paneles de detalle. */
   .panel--tr,
-  .panel--log {
+  .panel--log,
+  .panel--pressure {
     display: none;
   }
   .panel--tl,
   .panel--price,
-  .panel--pressure {
+  .panel--watch,
+  .panel--clock {
     justify-self: stretch;
+  }
+  .sym-results {
+    max-height: 92px;
   }
 }
 
@@ -782,4 +790,166 @@ body {
   .clock-btns {
     flex-wrap: wrap;
   }
+}
+
+/* Watchlist --------------------------------------------------------------- */
+.panel--watch {
+  grid-area: watch;
+  justify-self: start;
+  align-self: start;
+  width: clamp(200px, 17vw, 250px);
+  pointer-events: auto;
+}
+.watch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.watch-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--ink-dim);
+}
+.btn--plan {
+  padding: 2px 7px;
+  font-size: 9px;
+}
+.watch {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+.watch-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-left: 2px solid transparent;
+}
+.watch-row.is-active {
+  border-left-color: var(--bull);
+  background: rgba(43, 255, 140, 0.09);
+}
+.watch-pick {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0 6px;
+  padding: 4px 6px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.watch-pick:hover {
+  background: rgba(43, 255, 140, 0.12);
+}
+.watch-base {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.watch-price {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.watch-chg {
+  grid-column: 1 / -1;
+  font-size: 9px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+.watch-chg.up {
+  color: var(--bull);
+}
+.watch-chg.down {
+  color: var(--bear);
+}
+.in--search {
+  width: 100%;
+  margin-top: 8px;
+}
+.in:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sym-results {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 108px;
+  overflow-y: auto;
+}
+.sym {
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 6px;
+  color: var(--ink-dim);
+  background: rgba(43, 255, 140, 0.06);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.sym:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(43, 255, 140, 0.22);
+}
+.sym:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.panel--watch .hint {
+  margin-top: 7px;
+}
+
+/* Planes ------------------------------------------------------------------ */
+.plan-card {
+  padding: 12px 14px;
+  margin-bottom: 4px;
+  background: rgba(43, 255, 140, 0.07);
+  border: 1px solid var(--border);
+}
+.plan-now {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--ink-dim);
+}
+.plan-name {
+  margin: 3px 0 8px;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  color: var(--bull);
+}
+.plan-feats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+.plan-feats li::before {
+  content: "· ";
+  color: var(--bull);
+}
+.plan-feats--pro li::before {
+  content: "✚ ";
+}
+.btn--wide {
+  width: 100%;
+  margin-top: 10px;
+}
+.hint--legal {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }

@@ -138,13 +138,29 @@ export class OrderBook {
   }
 }
 
-/** Tamaño de cubo "bonito" para que el campo cubra ~±0.5% del precio. */
+/**
+ * Tamaño de cubo "bonito" para que el campo cubra ~±0.5% del precio.
+ *
+ * Los pasos bajan hasta 1e-8 porque el campo ya no es sólo de BTC: DOGE cotiza
+ * a $0,07 y PEPE a $0,000003, y con un mínimo de $0,01 el libro entero de esas
+ * monedas caía en un solo tramo y el valle salía plano.
+ */
 export function niceBinSize(mid) {
   const target = mid * 0.00025;
-  const steps = [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500];
+  // Escalera 1-2-5 por década, de 1e-8 (el tick más fino que admite Binance en
+  // pares como PEPE) hasta 1000. Con saltos de 2,5x el paso elegido se quedaba
+  // hasta un 60% lejos del objetivo; así el error máximo baja a la mitad.
+  const steps = [];
+  for (let exp = -8; exp <= 3; exp++) {
+    for (const m of [1, 2, 5]) steps.push(m * Math.pow(10, exp));
+  }
+
+  // Comparamos en proporción, no en diferencia absoluta: con un objetivo de
+  // 0,000018 (DOGE) la resta hace que 0,01 y 0,00001 parezcan casi igual de
+  // cerca, y ganaría un paso 500 veces demasiado grande.
   let best = steps[0];
   for (const s of steps) {
-    if (Math.abs(s - target) < Math.abs(best - target)) best = s;
+    if (Math.abs(Math.log(s / target)) < Math.abs(Math.log(best / target))) best = s;
   }
   return best;
 }

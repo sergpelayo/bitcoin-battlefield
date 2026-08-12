@@ -9,6 +9,8 @@
  * funciona aunque el sitio no se pueda incrustar.
  */
 
+import { PRECIO_PRO } from './license.js';
+
 const CLAVE = 'bb.controles.v1';
 const $ = (id) => document.getElementById(id);
 
@@ -49,8 +51,10 @@ export function embedUrl({ tipo, id }) {
 }
 
 export class Controls {
-  constructor(audio) {
+  constructor(audio, license, watchlist) {
     this.audio = audio;
+    this.license = license;
+    this.watchlist = watchlist;
     this.estado = { musica: '', yt: '', volumen: 35, sfx: true };
     this._cargar();
     this._montar();
@@ -74,15 +78,16 @@ export class Controls {
 
   _montar() {
     const cajon = $('drawer');
-    const abrir = (pestana) => {
+    const PESTANAS = { alarms: 'ALARMAS', audio: 'AUDIO', plan: 'PLAN' };
+    const abrir = (cual) => {
       cajon.hidden = false;
-      const alarmas = pestana === 'alarms';
-      $('tab-alarms').hidden = !alarmas;
-      $('tab-audio').hidden = alarmas;
-      $('drawer-title').textContent = alarmas ? 'ALARMAS' : 'AUDIO';
+      for (const id of Object.keys(PESTANAS)) $(`tab-${id}`).hidden = id !== cual;
+      $('drawer-title').textContent = PESTANAS[cual];
     };
     $('open-alarms').addEventListener('click', () => abrir('alarms'));
     $('open-audio').addEventListener('click', () => abrir('audio'));
+    $('open-plan').addEventListener('click', () => abrir('plan'));
+    this._montarPlan();
     $('drawer-close').addEventListener('click', () => {
       cajon.hidden = true;
     });
@@ -150,6 +155,56 @@ export class Controls {
     entrada.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this._cargarYt(entrada.value);
     });
+  }
+
+  _montarPlan() {
+    $('plan-precio').textContent = PRECIO_PRO;
+    const entrada = $('in-key');
+    const aviso = $('key-hint');
+
+    const pintar = () => {
+      const p = this.license.plan;
+      $('plan-name').textContent = p.nombre;
+      const feats = $('plan-feats');
+      feats.textContent = '';
+      const filas = this.license.esPro
+        ? ['Monedas ilimitadas', 'Alarmas ilimitadas', 'Buscador completo']
+        : [
+            `${p.monedas} monedas en el watchlist`,
+            `${p.alarmasPorMoneda} alarma de precio por moneda`,
+            'Sin buscador de pares',
+          ];
+      for (const f of filas) {
+        const li = document.createElement('li');
+        li.textContent = f;
+        feats.append(li);
+      }
+      $('btn-desactivar').hidden = !this.license.esPro;
+      $('plan-card').classList.toggle('is-pro', this.license.esPro);
+    };
+
+    $('btn-key').addEventListener('click', async () => {
+      const ok = await this.license.activar(entrada.value);
+      aviso.classList.toggle('warn', !ok);
+      aviso.textContent = ok
+        ? 'Plan COMANDANTE activo. Ya no hay límites.'
+        : 'Esa clave no tiene el formato BB-XXXX-XXXX-XXXX.';
+      if (ok) {
+        entrada.value = '';
+        pintar();
+        this.watchlist.refrescarPlan();
+      }
+    });
+
+    $('btn-desactivar').addEventListener('click', () => {
+      this.license.desactivar();
+      aviso.classList.remove('warn');
+      aviso.textContent = 'De vuelta en el plan gratuito.';
+      pintar();
+      this.watchlist.refrescarPlan();
+    });
+
+    pintar();
   }
 
   _cargarYt(url) {
