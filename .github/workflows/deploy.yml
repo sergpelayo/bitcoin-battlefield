@@ -1,0 +1,55 @@
+# Publica dist/ en GitHub Pages en cada push a main.
+#
+# El sitio es estático y los datos los pide el navegador de cada visitante
+# directamente a Binance, así que no hay servidor que pagar ni que mantener:
+# esto sólo compila y sube ficheros.
+name: Desplegar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Permite lanzarlo a mano desde la pestaña Actions sin tener que hacer un commit.
+  workflow_dispatch:
+
+# Lo mínimo que necesita el deploy oficial de Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Si se empujan dos commits seguidos, que el segundo cancele al primero en vez
+# de pelearse por el mismo entorno de Pages.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # npm ci exige que package-lock.json esté al día; si falla, es que el lock
+      # y package.json han divergido.
+      - run: npm ci
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

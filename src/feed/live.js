@@ -11,9 +11,14 @@ import { OrderBook } from '../lib/orderbook.js';
  * Eventos: 'book' | 'trade' | 'ticker' | 'up' | 'down'
  */
 
+// binance.vision va primero a propósito: sirve los mismos streams de market data
+// pero sin el geobloqueo por IP de binance.com. Con el sitio publicado, un visitante
+// desde una región bloqueada se comería 25 s de datos simulados antes de que la
+// rotación de endpoints llegara al segundo. Cuesta ~0,5 s más de latencia inicial;
+// a cambio, la primera conexión funciona desde cualquier país.
 const ENDPOINTS = [
-  { ws: 'wss://stream.binance.com:9443', rest: 'https://api.binance.com' },
   { ws: 'wss://data-stream.binance.vision:9443', rest: 'https://data-api.binance.vision' },
+  { ws: 'wss://stream.binance.com:9443', rest: 'https://api.binance.com' },
 ];
 
 const SNAPSHOT_LIMIT = 5000;
