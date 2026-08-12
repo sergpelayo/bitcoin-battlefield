@@ -67,6 +67,20 @@ npm run preview   # sirve dist/ en local
 El build usa rutas relativas, así que `dist/` se puede servir desde cualquier hosting
 estático (o subcarpeta) sin tocar nada.
 
+## Despliegue
+
+Publicado en <https://sergpelayo.github.io/bitcoin-battlefield/>.
+
+Cada push a `main` dispara `.github/workflows/deploy.yml`, que compila `dist/` y lo sube
+a GitHub Pages. No hay nada más que mantener: el sitio es estático y **los datos los pide
+el navegador de cada visitante directamente a Binance**, así que ni el hosting ni el feed
+cuestan nada por mucho tráfico que reciba. También se puede lanzar a mano desde la pestaña
+*Actions* sin hacer un commit.
+
+Por eso `data-stream.binance.vision` va primero en `ENDPOINTS`: sirve los mismos streams
+que `binance.com` pero sin geobloqueo por IP, y con el sitio abierto a cualquiera importa
+que la primera conexión funcione desde cualquier país.
+
 ## Controles
 
 | Tecla / gesto | Acción |
