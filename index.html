@@ -24,6 +24,12 @@
           <span class="status-dot" id="status-dot"></span>
           <span id="status-text">conectando…</span>
         </div>
+        <ul class="legend">
+          <li><i class="ic ic--sol"></i> soldado <b>$10K</b></li>
+          <li><i class="ic ic--tan"></i> tanque <b>$100K</b></li>
+          <li><i class="ic ic--gig"></i> gigante <b>$1M</b></li>
+          <li><i class="ic ic--avi"></i> avión <b>$5M</b> en reserva</li>
+        </ul>
       </section>
 
       <!-- ============ Superior centro: precio ============ -->
@@ -70,8 +76,23 @@
           </div>
         </div>
         <div class="pressure-foot">
+          <span>EN CAMPO <b id="field-usd">—</b></span>
+          <span>RESERVA <b id="reserve-usd">—</b></span>
+        </div>
+        <div class="pressure-foot pressure-foot--btc">
           <span>BID <b id="bid-vol">—</b></span>
           <span>ASK <b id="ask-vol">—</b></span>
+        </div>
+      </section>
+
+      <!-- ============ Inferior centro: reloj + accesos ============ -->
+      <section class="panel panel--clock">
+        <div class="clock-time" id="clock-time">--:--:--</div>
+        <div class="clock-date" id="clock-date">—</div>
+        <div class="clock-next" id="clock-next">sin alarmas</div>
+        <div class="clock-btns">
+          <button type="button" class="btn" id="open-alarms">⏰ ALARMAS</button>
+          <button type="button" class="btn" id="open-audio">♪ AUDIO</button>
         </div>
       </section>
 
@@ -87,6 +108,79 @@
         </div>
       </section>
     </main>
+
+    <!-- ================== Cajón de control (alarmas y audio) ================== -->
+    <aside id="drawer" class="drawer" hidden>
+      <header class="drawer-head">
+        <span id="drawer-title">ALARMAS</span>
+        <button type="button" class="btn btn--x" id="drawer-close" aria-label="Cerrar">✕</button>
+      </header>
+
+      <div class="drawer-body" id="tab-alarms">
+        <h3 class="dr-h">ALARMA DE PRECIO</h3>
+        <form class="row" id="form-price">
+          <input class="in" id="in-price" type="number" step="0.01" min="0" placeholder="65000" />
+          <input class="in in--label" id="in-price-label" type="text" placeholder="etiqueta" />
+          <button class="btn" type="submit">+</button>
+        </form>
+        <p class="hint" id="price-hint">Suena al cruzar ese precio, suba o baje.</p>
+
+        <h3 class="dr-h">ALARMA DE HORA</h3>
+        <form class="row" id="form-time">
+          <input class="in" id="in-time" type="time" />
+          <input class="in in--label" id="in-time-label" type="text" placeholder="etiqueta" />
+          <button class="btn" type="submit">+</button>
+        </form>
+        <p class="hint">Si la hora ya pasó hoy, suena mañana.</p>
+
+        <h3 class="dr-h">VIGILANCIA DE MERCADO</h3>
+        <ul class="checks" id="market-alarms"></ul>
+
+        <h3 class="dr-h">PROGRAMADAS <span class="dim" id="alarm-count"></span></h3>
+        <ul class="alarm-list" id="alarm-list"></ul>
+      </div>
+
+      <div class="drawer-body" id="tab-audio" hidden>
+        <h3 class="dr-h">EFECTOS</h3>
+        <ul class="checks">
+          <li>
+            <label><input type="checkbox" id="chk-sfx" checked /> Explosiones al caer blindados</label>
+            <span class="hint">Un tanque suena seco; un gigante retumba.</span>
+          </li>
+        </ul>
+
+        <h3 class="dr-h">MÚSICA DE FONDO</h3>
+        <ul class="checks">
+          <li>
+            <label><input type="checkbox" id="chk-music" /> Reproducir pista propia</label>
+            <span class="hint" id="music-hint">Coloca tu fichero en <code>public/audio/</code>.</span>
+          </li>
+        </ul>
+        <div class="row">
+          <input class="in" id="in-music" type="text" placeholder="audio/mi-pista.mp3" />
+          <button class="btn" type="button" id="btn-music">CARGAR</button>
+        </div>
+        <label class="vol">VOLUMEN <input type="range" id="in-vol" min="0" max="100" value="35" /></label>
+
+        <h3 class="dr-h">YOUTUBE</h3>
+        <p class="hint">
+          YouTube Music no se deja incrustar (lo bloquea Google), así que suena por el
+          reproductor de YouTube. Pega el enlace de un vídeo o de una playlist.
+        </p>
+        <div class="row">
+          <input class="in" id="in-yt" type="text" placeholder="https://youtube.com/playlist?list=..." />
+          <button class="btn" type="button" id="btn-yt">CARGAR</button>
+        </div>
+        <div id="yt-holder" class="yt-holder"></div>
+      </div>
+    </aside>
+
+    <!-- Aviso a pantalla completa cuando salta una alarma -->
+    <div id="alarm-toast" class="toast" hidden>
+      <div class="toast-k" id="toast-k">ALARMA</div>
+      <div class="toast-v" id="toast-v"></div>
+      <button type="button" class="btn" id="toast-ok">SILENCIAR</button>
+    </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

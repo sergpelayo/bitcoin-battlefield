@@ -108,6 +108,37 @@ export function createTank(p) {
   return finish(parts);
 }
 
+/**
+ * Tanque superpesado tipo Maus: una orden de un millón de dólares.
+ *
+ * No es el tanque normal escalado — a igual tamaño se confundirían. Aquí el
+ * casco es largo y bajo, las orugas comen media silueta y el cañón sobresale
+ * de forma desproporcionada, así que se reconoce por perfil incluso de lejos y
+ * aunque tenga tanques normales pegados al lado.
+ */
+export function createSuperTank(p) {
+  return finish([
+    // Casco: dos cuerpos para insinuar el blindaje frontal inclinado.
+    box(3.0, 1.05, 5.4, 0, 1.35, 0, p.hull),
+    box(2.6, 0.62, 4.4, 0, 2.05, -0.2, p.hull),
+    box(2.75, 0.5, 1.5, 0, 1.0, 2.6, p.hull),
+    // Orugas: enormes, son la mitad del carácter del modelo.
+    box(0.95, 1.25, 6.0, -1.72, 0.72, 0, p.track),
+    box(0.95, 1.25, 6.0, 1.72, 0.72, 0, p.track),
+    box(1.02, 0.3, 5.2, -1.72, 1.2, 0, p.metal),
+    box(1.02, 0.3, 5.2, 1.72, 1.2, 0, p.metal),
+    // Torreta y cañón largo: lo que remata la silueta.
+    box(2.1, 0.95, 2.4, 0, 2.78, -0.25, p.hull),
+    box(1.5, 0.4, 0.9, 0, 3.32, -0.3, p.hull),
+    cyl(0.19, 0.22, 4.2, 10, 0, 2.85, 2.1, p.metal, Math.PI / 2),
+    cyl(0.3, 0.3, 0.5, 10, 0, 2.85, 0.9, p.metal, Math.PI / 2),
+    // Detalles: escotilla, antena y cajas de munición.
+    box(0.5, 0.16, 0.5, -0.55, 3.55, -0.5, p.metal),
+    box(0.08, 1.5, 0.08, 0.8, 3.6, -1.0, p.metal),
+    box(0.7, 0.4, 0.8, 0, 2.0, -2.4, p.accent),
+  ]);
+}
+
 /** Avioncito: ~4 de envergadura, mirando a +Z. */
 export function createPlane(p) {
   return finish([

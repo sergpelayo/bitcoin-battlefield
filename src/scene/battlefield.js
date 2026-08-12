@@ -136,6 +136,11 @@ export class Battlefield {
     this.armies.fireTrade(trade);
   }
 
+  /** Avisa de cada blindado que desaparece del campo (para el sonido). */
+  onUnitDestroyed(fn) {
+    this.armies.onDestroy = fn;
+  }
+
   setBloom(enabled) {
     this.bloomEnabled = enabled;
     this.bloom.enabled = enabled;

@@ -70,31 +70,71 @@ export class OrderBook {
   bucketize(mid, binSize, bins) {
     const bidBins = new Float64Array(bins);
     const askBins = new Float64Array(bins);
+    // En dólares nocionales (precio x cantidad), que es lo que las tropas
+    // representan. No vale multiplicar la cantidad por el mid al final: cada
+    // nivel se valora a SU precio, y en las paredes lejanas eso ya no da igual.
+    const bidUsd = new Float64Array(bins);
+    const askUsd = new Float64Array(bins);
+    // Liquidez que existe pero cae fuera del campo: la reserva que vuela arriba.
+    let bidOutUsd = 0;
+    let askOutUsd = 0;
 
     for (const [p, q] of this.bids) {
       const d = mid - p;
       if (d < 0) continue;
       const i = Math.floor(d / binSize);
-      if (i < bins) bidBins[i] += q;
+      if (i < bins) {
+        bidBins[i] += q;
+        bidUsd[i] += p * q;
+      } else {
+        bidOutUsd += p * q;
+      }
     }
     for (const [p, q] of this.asks) {
       const d = p - mid;
       if (d < 0) continue;
       const i = Math.floor(d / binSize);
-      if (i < bins) askBins[i] += q;
+      if (i < bins) {
+        askBins[i] += q;
+        askUsd[i] += p * q;
+      } else {
+        askOutUsd += p * q;
+      }
     }
 
     let bidVol = 0;
     let askVol = 0;
     let maxQty = 0;
+    let bidUsdTotal = 0;
+    let askUsdTotal = 0;
+    let maxUsd = 0;
     for (let i = 0; i < bins; i++) {
       bidVol += bidBins[i];
       askVol += askBins[i];
+      bidUsdTotal += bidUsd[i];
+      askUsdTotal += askUsd[i];
       if (bidBins[i] > maxQty) maxQty = bidBins[i];
       if (askBins[i] > maxQty) maxQty = askBins[i];
+      if (bidUsd[i] > maxUsd) maxUsd = bidUsd[i];
+      if (askUsd[i] > maxUsd) maxUsd = askUsd[i];
     }
 
-    return { bidBins, askBins, bidVol, askVol, maxQty, binSize, mid };
+    return {
+      bidBins,
+      askBins,
+      bidUsd,
+      askUsd,
+      bidOutUsd,
+      askOutUsd,
+      bidUsdTotal,
+      askUsdTotal,
+      bidVol,
+      askVol,
+      maxQty,
+      maxUsd,
+      binSize,
+      mid,
+    };
   }
 }
 

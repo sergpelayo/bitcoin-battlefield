@@ -3,10 +3,26 @@ import { niceBinSize } from './lib/orderbook.js';
 import { Battlefield } from './scene/battlefield.js';
 import { BINS } from './scene/field.js';
 import { Hud } from './hud.js';
+import { Audio } from './audio.js';
+import { Alarms } from './alarms.js';
+import { Controls } from './controls.js';
 
 const canvas = document.getElementById('scene');
 const battlefield = new Battlefield(canvas);
 const hud = new Hud();
+const audio = new Audio();
+const alarms = new Alarms(audio);
+const controls = new Controls(audio);
+
+// El navegador no deja crear audio hasta que el usuario toca la página: el
+// primer gesto lo desbloquea y a partir de ahí suenan explosiones y sirenas.
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+  window.addEventListener(ev, () => audio.unlock(), { once: true });
+}
+
+// Cada tanque o gigante que desaparece del campo es liquidez que se han comido
+// o retirado: suena su explosión.
+battlefield.onUnitDestroyed(({ kind }) => audio.explosion(kind));
 
 // ---------------------------------------------------------------- datos ----
 const feed = new MarketFeed('BTCUSDT');
@@ -18,6 +34,8 @@ feed.on('trade', (t) => {
   battlefield.fireTrade(t);
   // El ticker de 24h llega una vez por segundo; los trades dan el precio al instante.
   hud.setPrice(t.price);
+  alarms.onPrice(t.price);
+  alarms.onTrade(t);
   if (t.qty >= 0.02) hud.pushTrade(t);
 });
 
@@ -41,12 +59,13 @@ function consumeBook() {
   battlefield.setDepth(depth);
   battlefield.setMarket(best.mid, binSize);
 
-  // Pared = el tramo más cargado de cada lado, valorado en dólares.
-  let maxBid = 0;
-  let maxAsk = 0;
+  // Pared = el tramo más cargado de cada lado. Ya viene en dólares del libro,
+  // valorado nivel a nivel, así que no hay que multiplicar por el mid.
+  let buyWall = 0;
+  let sellWall = 0;
   for (let i = 0; i < BINS; i++) {
-    if (depth.bidBins[i] > maxBid) maxBid = depth.bidBins[i];
-    if (depth.askBins[i] > maxAsk) maxAsk = depth.askBins[i];
+    if (depth.bidUsd[i] > buyWall) buyWall = depth.bidUsd[i];
+    if (depth.askUsd[i] > sellWall) sellWall = depth.askUsd[i];
   }
 
   hud.setDepth({
@@ -55,9 +74,14 @@ function consumeBook() {
     spread: best.spread,
     binSize,
     levels: BINS,
-    buyWall: maxBid * best.mid,
-    sellWall: maxAsk * best.mid,
+    buyWall,
+    sellWall,
+    bidUsdTotal: depth.bidUsdTotal,
+    askUsdTotal: depth.askUsdTotal,
+    reserveBid: depth.bidOutUsd,
+    reserveAsk: depth.askOutUsd,
   });
+  alarms.onDepth({ buyWall, sellWall });
 }
 
 feed.start();
@@ -85,6 +109,7 @@ function frame(now) {
 
   consumeBook();
   battlefield.update(dt);
+  alarms.tick();
 
   fpsAcc += dt;
   fpsFrames++;
@@ -97,4 +122,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Útil para trastear desde la consola del navegador.
-window.__battlefield = { feed, battlefield, hud };
+window.__battlefield = { feed, battlefield, hud, audio, alarms, controls };

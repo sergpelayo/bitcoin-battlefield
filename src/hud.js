@@ -42,6 +42,8 @@ export class Hud {
       askVol: $('ask-vol'),
       buyWall: $('buy-wall'),
       sellWall: $('sell-wall'),
+      fieldUsd: $('field-usd'),
+      reserveUsd: $('reserve-usd'),
       verdict: $('verdict'),
       log: $('log'),
       fps: $('fps'),
@@ -92,7 +94,19 @@ export class Hud {
     this.el.vol.textContent = `$${fmtCompact(volQuote)}`;
   }
 
-  setDepth({ bidVol, askVol, spread, binSize, levels, buyWall, sellWall }) {
+  setDepth({
+    bidVol,
+    askVol,
+    spread,
+    binSize,
+    levels,
+    buyWall,
+    sellWall,
+    bidUsdTotal,
+    askUsdTotal,
+    reserveBid,
+    reserveAsk,
+  }) {
     const total = bidVol + askVol;
     const bullPct = total > 0 ? (bidVol / total) * 100 : 50;
 
@@ -103,6 +117,9 @@ export class Hud {
     this.el.askVol.textContent = `${fmtBtc(askVol)} BTC`;
     this.el.buyWall.textContent = `$${fmtCompact(buyWall)}`;
     this.el.sellWall.textContent = `$${fmtCompact(sellWall)}`;
+    // Lo que suman las tropas en pantalla, y lo que espera detrás como aviones.
+    this.el.fieldUsd.textContent = `$${fmtCompact(bidUsdTotal + askUsdTotal)}`;
+    this.el.reserveUsd.textContent = `$${fmtCompact(reserveBid + reserveAsk)}`;
 
     let verdict = 'CONTESTED';
     let cls = '';

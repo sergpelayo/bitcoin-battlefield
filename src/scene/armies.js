@@ -1,17 +1,32 @@
 import * as THREE from 'three';
 import { mulberry32 } from './noise.js';
-import { BIN_WORLD, BINS, CENTER_GAP, Z_FAR, Z_NEAR, roadOffset } from './field.js';
+import {
+  BIN_WORLD,
+  BINS,
+  CENTER_GAP,
+  GIANTS_PER_BIN,
+  PLANE_USD,
+  SOLDIERS_PER_BIN,
+  TANKS_PER_BIN,
+  Z_FAR,
+  Z_NEAR,
+  denominate,
+  roadOffset,
+} from './field.js';
 import {
   BEAR_PALETTE,
   BULL_PALETTE,
   createPlane,
   createSoldier,
+  createSuperTank,
   createTank,
 } from './models.js';
 
-const SOLDIERS_PER_BIN = 26;
-const TANKS_PER_BIN = 4;
 const PLANES_PER_SIDE = 6;
+// Tope de bajas anunciadas por actualización. Cuando el libro se re-sincroniza
+// los contadores caen de golpe en todos los tramos a la vez; sin este tope
+// saldría una traca de explosiones que no representa nada real.
+const MAX_DESTROY_FX = 4;
 const TRACERS = 80;
 const BLASTS = 26;
 const SMOKES = 42;
@@ -19,9 +34,11 @@ const SMOKES = 42;
 /**
  * Las dos fuerzas desplegadas sobre el valle.
  *
- * Cada tramo de precio del order book es una franja del terreno; el volumen de
- * ese tramo decide cuántos soldados y tanques hay plantados en él. Una pared de
- * liquidez se ve, literalmente, como una concentración de tropas.
+ * Cada tramo de precio del order book es una franja del terreno, y el dinero
+ * que hay en ese tramo se reparte en figuras con valor fijo: un soldado son
+ * $10.000, un tanque $100.000 y un tanque gigante $1.000.000. Contar las
+ * figuras de una franja es leer cuántos dólares defienden ese precio, y una
+ * pared de liquidez se ve literalmente como una concentración de blindados.
  *
  * Las posiciones de cada plaza son fijas (se sortean una vez con semilla), así
  * que cuando el volumen sube y baja las unidades aparecen y desaparecen en su
@@ -32,16 +49,20 @@ export class Armies {
     this.terrain = terrain;
     this.group = new THREE.Group();
 
-    this.counts = {
-      '-1': { soldiers: new Int32Array(BINS), tanks: new Int32Array(BINS) },
-      1: { soldiers: new Int32Array(BINS), tanks: new Int32Array(BINS) },
-    };
-    this.prev = {
-      '-1': { soldiers: new Int32Array(BINS), tanks: new Int32Array(BINS) },
-      1: { soldiers: new Int32Array(BINS), tanks: new Int32Array(BINS) },
-    };
+    const contadores = () => ({
+      soldiers: new Int32Array(BINS),
+      tanks: new Int32Array(BINS),
+      giants: new Int32Array(BINS),
+    });
+    this.counts = { '-1': contadores(), 1: contadores() };
+    this.prev = { '-1': contadores(), 1: contadores() };
 
-    this.qtyRef = 1;
+    // Aviones activos por bando: la reserva de liquidez fuera del campo.
+    this.planeCount = { '-1': 0, 1: 0 };
+    // Desplazamiento aplicado en el último frame, para saber dónde cae una baja.
+    this._offset = { '-1': 0, 1: 0 };
+    /** Lo rellena quien quiera oír las bajas (sonido, HUD). */
+    this.onDestroy = null;
     this._dummy = new THREE.Object3D();
     this._hidden = new THREE.Object3D();
     this._hidden.position.set(0, -400, 0);
@@ -106,8 +127,11 @@ export class Armies {
       this.troops[side] = {
         soldierSlots: this._slots(rng, SOLDIERS_PER_BIN, side, 0.92, 1.7),
         tankSlots: this._slots(rng, TANKS_PER_BIN, side, 0.6, 1.5),
+        // Los gigantes se reparten menos y a escala 1: ya son enormes de fábrica.
+        giantSlots: this._slots(rng, GIANTS_PER_BIN, side, 0.35, 1),
         soldiers: this._mesh(createSoldier(palette), BINS * SOLDIERS_PER_BIN),
         tanks: this._mesh(createTank(palette), BINS * TANKS_PER_BIN),
+        giants: this._mesh(createSuperTank(palette), BINS * GIANTS_PER_BIN),
       };
     }
   }
@@ -209,21 +233,69 @@ export class Armies {
   }
 
   // --------------------------------------------------------------- datos ----
-  /** Traduce el volumen de cada tramo del libro en tropas sobre el terreno. */
-  setDepth({ bidBins, askBins, maxQty }) {
-    this.qtyRef += (Math.max(maxQty, 1e-4) - this.qtyRef) * 0.08;
-    const ref = Math.max(this.qtyRef, 1e-4);
+  /**
+   * Traduce el dinero de cada tramo del libro en tropas sobre el terreno.
+   *
+   * No hay normalización ni escala relativa: un tanque son $100.000 aquí y
+   * dentro de una hora. Por eso el campo se vacía de verdad cuando el libro
+   * adelgaza — eso es información, no un fallo de presentación.
+   */
+  setDepth({ bidUsd, askUsd, bidOutUsd, askOutUsd }) {
+    const bajas = [];
 
     for (const side of [-1, 1]) {
-      const bins = side === -1 ? bidBins : askBins;
+      const usd = side === -1 ? bidUsd : askUsd;
       const c = this.counts[side];
       for (let i = 0; i < BINS; i++) {
-        const n = Math.min(1, bins[i] / ref);
-        // Exponente > 1: las paredes de liquidez se concentran de verdad en vez
-        // de quedar todos los tramos con una densidad parecida.
-        c.soldiers[i] = n > 0.04 ? Math.max(1, Math.round(Math.pow(n, 1.2) * SOLDIERS_PER_BIN)) : 0;
-        c.tanks[i] = n > 0.3 ? Math.max(1, Math.round(Math.pow(n, 1.5) * TANKS_PER_BIN)) : 0;
+        const { giants, tanks, soldiers } = denominate(usd[i]);
+        // Una pieza que desaparece es liquidez que se han comido o retirado.
+        // Sólo anunciamos blindados: un soldado suelto entrando y saliendo es
+        // el latido normal del libro y no merece una explosión.
+        if (tanks < c.tanks[i]) bajas.push({ side, bin: i, kind: 'tank', n: c.tanks[i] - tanks });
+        if (giants < c.giants[i])
+          bajas.push({ side, bin: i, kind: 'giant', n: c.giants[i] - giants });
+        c.soldiers[i] = soldiers;
+        c.tanks[i] = tanks;
+        c.giants[i] = giants;
       }
+    }
+
+    // La reserva que no cabe en el campo sale volando: un avión por cada $5M.
+    for (const side of [-1, 1]) {
+      const fuera = side === -1 ? bidOutUsd : askOutUsd;
+      this.planeCount[side] = Math.max(
+        1,
+        Math.min(PLANES_PER_SIDE, Math.round(fuera / PLANE_USD)),
+      );
+    }
+
+    this._anunciarBajas(bajas);
+  }
+
+  /** Explosión y aviso por cada blindado que desaparece del campo. */
+  _anunciarBajas(bajas) {
+    if (!bajas.length) return;
+    // Primero los gigantes: si hay que recortar, que sobrevivan las bajas gordas.
+    bajas.sort((a, b) => (b.kind === 'giant' ? 1 : 0) - (a.kind === 'giant' ? 1 : 0));
+
+    let hechas = 0;
+    for (const baja of bajas) {
+      if (hechas >= MAX_DESTROY_FX) break;
+      const t = this.troops[baja.side];
+      const slots = baja.kind === 'giant' ? t.giantSlots : t.tankSlots;
+      const perBin = baja.kind === 'giant' ? GIANTS_PER_BIN : TANKS_PER_BIN;
+      const c = this.counts[baja.side];
+      const vivos = baja.kind === 'giant' ? c.giants[baja.bin] : c.tanks[baja.bin];
+      const s = slots[baja.bin * perBin + Math.min(perBin - 1, vivos)];
+      if (!s) continue;
+
+      const x = s.x + this._offset[baja.side] + roadOffset(s.z);
+      const y = this.terrain.sample(x, s.z);
+      const size = baja.kind === 'giant' ? 3.4 : 1.7;
+      this._blast(x, y + 1, s.z, size);
+      this._smoke(x, y + 1, s.z, size);
+      this.onDestroy?.({ kind: baja.kind, side: baja.side, x, y, z: s.z });
+      hechas++;
     }
   }
 
@@ -287,6 +359,9 @@ export class Armies {
       // El bando con más presión empuja hacia la línea del frente.
       const push = (side === -1 ? Math.max(0, pressure) : Math.max(0, -pressure)) * 2.6;
       const offset = frontX - side * push;
+      // Lo guardamos para poder situar las explosiones de las bajas, que se
+      // calculan fuera del bucle de render.
+      this._offset[side] = offset;
 
       for (let bin = 0; bin < BINS; bin++) {
         const nS = c.soldiers[bin];
@@ -330,10 +405,34 @@ export class Armies {
           t.tanks.setMatrixAt(idx, d.matrix);
         }
         prev.tanks[bin] = nT;
+
+        const nG = c.giants[bin];
+        for (let j = 0; j < GIANTS_PER_BIN; j++) {
+          const idx = bin * GIANTS_PER_BIN + j;
+          if (j >= nG) {
+            if (j < prev.giants[bin]) t.giants.setMatrixAt(idx, this._hidden.matrix);
+            continue;
+          }
+          const s = t.giantSlots[idx];
+          // Casi quietos: pesan un millón de dólares y tienen que leerse como
+          // fortificación plantada, no como tropa que patrulla.
+          const px = s.x + offset + roadOffset(s.z) + Math.sin(time * 0.24 + s.phase) * 0.18;
+          d.position.set(px, terrain.sample(px, s.z), s.z);
+          d.rotation.set(
+            Math.sin(time * 0.6 + s.phase) * 0.012,
+            side === -1 ? Math.PI / 2 + s.yaw * 0.3 : -Math.PI / 2 + s.yaw * 0.3,
+            0,
+          );
+          d.scale.setScalar(s.scale);
+          d.updateMatrix();
+          t.giants.setMatrixAt(idx, d.matrix);
+        }
+        prev.giants[bin] = nG;
       }
 
       t.soldiers.instanceMatrix.needsUpdate = true;
       t.tanks.instanceMatrix.needsUpdate = true;
+      t.giants.instanceMatrix.needsUpdate = true;
     }
   }
 
@@ -341,6 +440,15 @@ export class Armies {
     const d = this._dummy;
     d.rotation.order = 'YXZ';
     for (const p of this.planes) {
+      // Cada avión son $5M de reserva fuera del campo; los que no se pagan, no vuelan.
+      if (p.index >= this.planeCount[p.side]) {
+        if (p.visible !== false) {
+          p.mesh.setMatrixAt(p.index, this._hidden.matrix);
+          p.visible = false;
+        }
+        continue;
+      }
+      p.visible = true;
       p.angle += p.speed * dt;
       const x = frontX + Math.cos(p.angle) * p.rx;
       const z = Math.sin(p.angle) * p.rz - 4;
